@@ -1,0 +1,7 @@
+# Directory enrichment job (Gemini + Supabase). Install into the repo venv:
+#   ../../.venv/bin/pip install -r requirements.txt
+google-genai>=1.0.0
+supabase>=2.0.0
+pydantic>=2
+tenacity>=8.0.0
+python-dotenv>=1.0.0

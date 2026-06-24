@@ -1,0 +1,28 @@
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# --- Collected / scraped data ---
+/data
+clinic-directory/data/
+
+# --- Scraper debug artifacts ---
+pds_debug.html
+*_debug.html
+
+# --- OS / editor ---
+.DS_Store
+*.swp
+.idea/
+.vscode/
