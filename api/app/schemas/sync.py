@@ -45,6 +45,7 @@ class FacilitySync(ORMModel):
     id: uuid.UUID
     name: str
     type: str
+    facility_type: str | None = None  # advisory: medical|aesthetic|mixed|unknown
     address: str
     city: str
     province: str
@@ -58,6 +59,7 @@ class FacilitySync(ORMModel):
     status: str | None = None
     phone: str | None = None
     website: str | None = None
+    booking_url: str | None = None  # clinic-level online booking page
     google_maps_url: str | None = None
     google_rating: float | None = None
     weekday_hours: Any = None
