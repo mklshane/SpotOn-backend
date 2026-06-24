@@ -1,0 +1,34 @@
+# Render Blueprint for the SpotOn API.
+# Deploy: Render Dashboard > New > Blueprint > pick this repo.
+# Secret values (sync: false) are NOT stored here — Render prompts for them
+# on first deploy and keeps them in the dashboard.
+services:
+  - type: web
+    name: spoton-api
+    runtime: python
+    plan: free
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Supabase SESSION pooler URI (port 5432, postgresql+asyncpg://).
+      # Direct connection is IPv6-only and Render can't reach it.
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      # Comma-separated allowed origins for the app/frontend.
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ENV
+        value: prod
+      # Pin Python to a version with full wheel coverage for asyncpg/geoalchemy2.
+      - key: PYTHON_VERSION
+        value: 3.12.8
