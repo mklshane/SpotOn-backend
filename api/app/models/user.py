@@ -1,7 +1,7 @@
-"""User profile model — mirrors public.users (keyed to auth.users.id).
+"""User profile model — mirrors public.users.
 
-`hashed_password` was dropped by migration 005_supabase_auth.sql (Supabase Auth
-now owns credentials), so it is intentionally absent here.
+Custom auth (migration 009_custom_auth.sql): we own credentials again, so
+`hashed_password` is back and `id` is self-generated (no longer FK to auth.users).
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     email: Mapped[str | None] = mapped_column(Text)  # citext in DB; behaves like text
     phone: Mapped[str | None] = mapped_column(Text)
+    hashed_password: Mapped[str | None] = mapped_column(Text)
     full_name: Mapped[str | None] = mapped_column(Text)
     date_of_birth: Mapped[dt.date | None] = mapped_column(Date)
     sex: Mapped[str | None] = mapped_column(Text)

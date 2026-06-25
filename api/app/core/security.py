@@ -1,18 +1,18 @@
-"""Supabase JWT verification + get_current_user dependency.
+"""Custom auth: issue + verify our own HS256 access tokens, and mint/ hash
+refresh tokens. Supabase is the database only — no JWKS, no Supabase JWTs.
 
-This project uses asymmetric JWT signing keys, so tokens are verified against
-the project's JWKS endpoint (cached). The token's `sub` claim is the auth user
-id, which is also the primary key of public.users.
+The access token's `sub` claim is the user id, which is the primary key of
+public.users.
 """
 from __future__ import annotations
 
-import ssl
+import datetime as dt
+import hashlib
+import secrets
 import uuid
 from dataclasses import dataclass
 
-import certifi
 import jwt
-from anyio import to_thread
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -20,20 +20,8 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# Supabase asymmetric keys are ES256 or RS256; allow both.
-_ALGORITHMS = ["ES256", "RS256"]
-_AUDIENCE = "authenticated"
-_ISSUER = f"{settings.SUPABASE_URL}/auth/v1" if settings.SUPABASE_URL else None
-
-# PyJWKClient fetches and caches the signing keys from the JWKS endpoint.
-# It uses urllib under the hood, so give it an explicit certifi CA bundle
-# (macOS system Python otherwise fails TLS verification).
-_ssl_context = ssl.create_default_context(cafile=certifi.where())
-_jwks_client: jwt.PyJWKClient | None = (
-    jwt.PyJWKClient(settings.SUPABASE_JWKS_URL, ssl_context=_ssl_context)
-    if settings.SUPABASE_JWKS_URL
-    else None
-)
+_ALGORITHM = "HS256"
+_ACCESS_TYPE = "access"
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -51,19 +39,43 @@ class CurrentUser:
     claims: dict
 
 
-def _verify_sync(token: str) -> dict:
-    """Blocking JWKS lookup + verification (run in a worker thread)."""
-    if _jwks_client is None:
-        raise RuntimeError("SUPABASE_JWKS_URL is not configured.")
-    signing_key = _jwks_client.get_signing_key_from_jwt(token)
-    decode_kwargs: dict = {
-        "algorithms": _ALGORITHMS,
-        "audience": _AUDIENCE,
-    }
-    if _ISSUER:
-        decode_kwargs["issuer"] = _ISSUER
-    return jwt.decode(token, signing_key.key, **decode_kwargs)
+def _now() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
 
+
+# --- Access tokens -----------------------------------------------------------
+
+def create_access_token(sub: str, email: str | None = None) -> str:
+    now = _now()
+    payload: dict = {
+        "sub": str(sub),
+        "type": _ACCESS_TYPE,
+        "iat": int(now.timestamp()),
+        "exp": int((now + dt.timedelta(minutes=settings.ACCESS_TOKEN_TTL_MIN)).timestamp()),
+    }
+    if email:
+        payload["email"] = email
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=_ALGORITHM)
+
+
+def access_token_ttl_seconds() -> int:
+    return settings.ACCESS_TOKEN_TTL_MIN * 60
+
+
+# --- Refresh tokens (opaque; only the sha256 hash is stored) ------------------
+
+def hash_refresh_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def new_refresh_token() -> tuple[str, str, dt.datetime]:
+    """Return (raw_token, token_hash, expires_at)."""
+    raw = secrets.token_urlsafe(48)
+    expires_at = _now() + dt.timedelta(days=settings.REFRESH_TOKEN_TTL_DAYS)
+    return raw, hash_refresh_token(raw), expires_at
+
+
+# --- Dependency --------------------------------------------------------------
 
 async def get_current_user(
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
@@ -71,10 +83,12 @@ async def get_current_user(
     if creds is None or not creds.credentials:
         raise _UNAUTHORIZED
     try:
-        claims = await to_thread.run_sync(_verify_sync, creds.credentials)
+        claims = jwt.decode(creds.credentials, settings.JWT_SECRET, algorithms=[_ALGORITHM])
     except Exception:
         raise _UNAUTHORIZED
 
+    if claims.get("type") != _ACCESS_TYPE:
+        raise _UNAUTHORIZED
     sub = claims.get("sub")
     if not sub:
         raise _UNAUTHORIZED

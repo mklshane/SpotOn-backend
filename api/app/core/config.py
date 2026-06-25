@@ -15,12 +15,16 @@ class Settings(BaseSettings):
     # Database — Supabase SESSION pooler (postgresql+asyncpg://, port 5432).
     DATABASE_URL: str
 
-    # Supabase Auth / API (new-style keys; this project uses asymmetric JWTs)
+    # Custom auth — we issue our own HS256 JWTs (Supabase is DB-only now).
+    JWT_SECRET: str = ""
+    ACCESS_TOKEN_TTL_MIN: int = 60
+    REFRESH_TOKEN_TTL_DAYS: int = 60
+
+    # Supabase (DB connection only; the auth keys below are unused / legacy).
     SUPABASE_URL: str = ""
     SUPABASE_PUBLISHABLE_KEY: str = ""
     SUPABASE_SECRET_KEY: str = ""
     SUPABASE_JWKS_URL: str = ""
-    # Fallback for HS256 projects (unused here, kept for portability)
     SUPABASE_JWT_SECRET: str = ""
 
     # App

@@ -6,6 +6,7 @@ from app.models.directory import (
     Facility,
     TelemedicinePlatform,
 )
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "TelemedicinePlatform",
     "BookingLink",
     "User",
+    "RefreshToken",
 ]

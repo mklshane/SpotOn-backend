@@ -16,6 +16,9 @@ services:
       # Direct connection is IPv6-only and Render can't reach it.
       - key: DATABASE_URL
         sync: false
+      # Secret for signing our own access JWTs (custom auth).
+      - key: JWT_SECRET
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_PUBLISHABLE_KEY

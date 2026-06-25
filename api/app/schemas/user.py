@@ -36,5 +36,6 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     date_of_birth: dt.date | None = None
     sex: Sex | None = None
+    phone: str | None = None
     # Sensitive — only stored when consent_data_privacy is true (gated in router).
     fitzpatrick_skin_type: int | None = Field(default=None, ge=1, le=6)
