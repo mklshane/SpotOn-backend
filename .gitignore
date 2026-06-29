@@ -17,6 +17,14 @@ venv/
 /data
 clinic-directory/data/
 
+# --- Data pipeline + migrations kept out of repo (see commit 1338bd1) ---
+/03_scrape_bookaderma.py
+/clinic-directory/
+/migrations/005_supabase_auth.sql
+/migrations/006_directory_enrichment.sql
+/migrations/007_facilities_booking_url.sql
+/migrations/008_facilities_status_excluded.sql
+
 # --- Scraper debug artifacts ---
 pds_debug.html
 *_debug.html
