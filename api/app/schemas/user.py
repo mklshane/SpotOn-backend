@@ -23,6 +23,7 @@ class UserOut(BaseModel):
     fitzpatrick_skin_type: int | None = None
     is_active: bool
     is_verified: bool
+    is_admin: bool = False
     consent_data_privacy: bool
     consent_at: dt.datetime | None = None
     created_at: dt.datetime

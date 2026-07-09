@@ -93,10 +93,13 @@ async def login(payload: LoginIn, session: AsyncSession = Depends(get_session)) 
     email = payload.identifier.strip().lower()
     phone = normalize_ph_phone(payload.identifier)
 
+    # Only match phone when one was actually parsed — `User.phone == None`
+    # renders as `phone IS NULL` and would match arbitrary phone-less users.
+    clauses = [User.email == email]
+    if phone:
+        clauses.append(User.phone == phone)
     user = (
-        await session.execute(
-            select(User).where(or_(User.email == email, User.phone == phone))
-        )
+        await session.execute(select(User).where(or_(*clauses)))
     ).scalars().first()
 
     if user is None or not verify_password(payload.password, user.hashed_password):

@@ -13,6 +13,7 @@ from decimal import Decimal
 from geoalchemy2 import Geography
 from sqlalchemy import (
     Boolean,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -50,6 +51,9 @@ class Doctor(Base):
     region: Mapped[str | None] = mapped_column(Text)
     specialties_display: Mapped[str | None] = mapped_column(Text)
     photo_url: Mapped[str | None] = mapped_column(Text)  # consent-only; stays null
+    enriched_by: Mapped[str | None] = mapped_column(Text)  # enrichment provenance (006)
+    enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    enrichment_meta: Mapped[dict | None] = mapped_column(JSONB)
 
     booking_links: Mapped[list[BookingLink]] = relationship(
         back_populates="doctor", lazy="selectin"
@@ -69,8 +73,10 @@ class Facility(Base):
     region: Mapped[str | None] = mapped_column(Text)
     latitude: Mapped[float] = mapped_column(nullable=False)
     longitude: Mapped[float] = mapped_column(nullable=False)
+    # GENERATED ALWAYS in the DB — never written by the app.
     location: Mapped[object | None] = mapped_column(
-        Geography(geometry_type="POINT", srid=4326)
+        Geography(geometry_type="POINT", srid=4326),
+        Computed("(st_makepoint(longitude, latitude))::geography"),
     )
     phone: Mapped[str | None] = mapped_column(Text)
     email: Mapped[str | None] = mapped_column(Text)
@@ -92,6 +98,14 @@ class Facility(Base):
     created_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     services: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Enrichment classification + provenance (006)
+    is_aesthetic_only: Mapped[bool | None] = mapped_column(Boolean)
+    classification_confidence: Mapped[Decimal | None] = mapped_column(Numeric)
+    classification_reason: Mapped[str | None] = mapped_column(Text)
+    needs_review: Mapped[bool | None] = mapped_column(Boolean)
+    enriched_by: Mapped[str | None] = mapped_column(Text)
+    enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    enrichment_meta: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class DoctorFacility(Base):

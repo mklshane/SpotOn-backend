@@ -15,8 +15,12 @@ from dataclasses import dataclass
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.db import get_session
+from app.models import User
 
 settings = get_settings()
 
@@ -98,3 +102,23 @@ async def get_current_user(
         raise _UNAUTHORIZED
 
     return CurrentUser(id=uid, email=claims.get("email"), claims=claims)
+
+
+async def require_admin(
+    current: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    """Admin gate for /admin/*. Loads the users row per request (is_admin is not
+    a JWT claim), so demotion takes effect immediately without token re-issue.
+    """
+    user = (
+        await session.execute(select(User).where(User.id == current.id))
+    ).scalars().first()
+    if user is None:
+        raise _UNAUTHORIZED
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    return user

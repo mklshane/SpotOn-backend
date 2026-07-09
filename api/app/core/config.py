@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
 
     # App
-    CORS_ORIGINS: str = "http://localhost:8081,http://localhost:19006"
+    CORS_ORIGINS: str = "http://localhost:8081,http://localhost:19006,http://localhost:3000"
     ENV: str = "dev"
 
     @property

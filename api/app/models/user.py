@@ -28,6 +28,9 @@ class User(Base):
     fitzpatrick_skin_type: Mapped[int | None] = mapped_column(SmallInteger)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.true())
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.false())
+    is_admin: Mapped[bool] = mapped_column(  # gates /admin/* (010)
+        Boolean, nullable=False, server_default=func.false()
+    )
     consent_data_privacy: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=func.false()
     )

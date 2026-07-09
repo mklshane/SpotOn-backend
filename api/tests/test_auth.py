@@ -16,9 +16,10 @@ from app.core.db import SessionLocal
 @pytest_asyncio.fixture
 async def creds():
     tag = uuid.uuid4().hex[:10]
+    digits = str(uuid.uuid4().int)[:7]  # phone must be digits only — normalization strips letters
     data = {
         "email": f"test_{tag}@example.com",
-        "phone": f"0917{tag[:7]}",  # 09xxxxxxxxx
+        "phone": f"0917{digits}",  # 09xxxxxxxxx
         "password": "TestPass123!",
         "full_name": "Test User",
         "consent": True,
