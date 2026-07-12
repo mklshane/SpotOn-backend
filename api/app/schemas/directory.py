@@ -45,6 +45,7 @@ class BookingLinkOut(ORMModel):
     available_text: str | None = None
     is_active: bool
     last_verified: dt.date | None = None
+    next_available: dt.datetime | None = None
     platform: PlatformOut | None = None
 
 
@@ -62,6 +63,7 @@ class DoctorOut(ORMModel):
     city: str | None = None
     region: str | None = None
     photo_url: str | None = None  # consent-only; passed through as-is (null)
+    description: str | None = None
     created_at: dt.datetime | None = None
     updated_at: dt.datetime
     booking_links: list[BookingLinkOut] = []
@@ -91,6 +93,9 @@ class FacilityOut(ORMModel):
     fee_max: int | None = None
     status: str | None = None
     services: list[str]
+    description: str | None = None
+    photo_url: str | None = None  # our Storage URL, stable
+    photo_attribution: str | None = None  # must be displayed with the photo (Google policy)
     created_at: dt.datetime | None = None
     updated_at: dt.datetime
     distance_m: float | None = None  # populated only on `near` queries

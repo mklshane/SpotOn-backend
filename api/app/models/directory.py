@@ -51,6 +51,7 @@ class Doctor(Base):
     region: Mapped[str | None] = mapped_column(Text)
     specialties_display: Mapped[str | None] = mapped_column(Text)
     photo_url: Mapped[str | None] = mapped_column(Text)  # consent-only; stays null
+    description: Mapped[str | None] = mapped_column(Text)  # short professional bio (011)
     enriched_by: Mapped[str | None] = mapped_column(Text)  # enrichment provenance (006)
     enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     enrichment_meta: Mapped[dict | None] = mapped_column(JSONB)
@@ -98,6 +99,11 @@ class Facility(Base):
     created_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     services: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Rendered content (011)
+    description: Mapped[str | None] = mapped_column(Text)  # 2-3 factual sentences
+    photo_url: Mapped[str | None] = mapped_column(Text)  # Supabase Storage public URL
+    photo_attribution: Mapped[str | None] = mapped_column(Text)  # Places author attribution — must be displayed with the photo
+    department_info: Mapped[dict | None] = mapped_column(JSONB)  # hospitals: derm-department findings
     # Enrichment classification + provenance (006)
     is_aesthetic_only: Mapped[bool | None] = mapped_column(Boolean)
     classification_confidence: Mapped[Decimal | None] = mapped_column(Numeric)
@@ -155,7 +161,9 @@ class BookingLink(Base):
     available_text: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
     last_verified: Mapped[dt.date | None] = mapped_column(Date)
+    next_available: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # first bookable slot (011)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (011); /sync cursor
 
     doctor: Mapped[Doctor] = relationship(back_populates="booking_links")
     platform: Mapped[TelemedicinePlatform] = relationship(lazy="selectin")

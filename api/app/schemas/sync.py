@@ -38,6 +38,7 @@ class DoctorSync(ORMModel):
     website: str | None = None
     google_maps_url: str | None = None
     photo_url: str | None = None
+    description: str | None = None
     updated_at: dt.datetime
 
 
@@ -64,6 +65,9 @@ class FacilitySync(ORMModel):
     google_rating: float | None = None
     weekday_hours: Any = None
     weekend_hours: Any = None
+    description: str | None = None
+    photo_url: str | None = None  # our Storage URL, stable
+    photo_attribution: str | None = None  # must be displayed with the photo (Google policy)
     updated_at: dt.datetime
 
     @field_validator("weekday_hours", "weekend_hours", mode="before")
@@ -89,7 +93,9 @@ class BookingLinkSync(ORMModel):
     available_text: str | None = None
     is_active: bool
     last_verified: dt.date | None = None
-    created_at: dt.datetime  # change timestamp (no updated_at on this table)
+    next_available: dt.datetime | None = None  # first bookable slot from the platform
+    created_at: dt.datetime
+    updated_at: dt.datetime | None = None  # change timestamp (trigger-maintained, 011)
 
 
 class PlatformSync(ORMModel):

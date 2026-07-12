@@ -5,9 +5,11 @@ the next call. Each collection is capped; if a collection has more rows than the
 cap, `has_more` is true and `next_cursor` is the change timestamp the client
 should pass as `since` to continue paging that collection.
 
-Change timestamps: doctors/facilities use `updated_at`; booking_links and
-telemedicine_platforms have no `updated_at`, so `created_at` is used. Hard
-deletes are not tracked (no tombstones); a periodic full refresh reconciles them.
+Change timestamps: doctors/facilities/booking_links use `updated_at`
+(booking_links' is trigger-maintained since migration 011, so scraper refreshes
+re-sync); telemedicine_platforms has no `updated_at`, so `created_at` is used.
+Hard deletes are not tracked (no tombstones); a periodic full refresh
+reconciles them.
 """
 from __future__ import annotations
 
@@ -62,7 +64,7 @@ async def sync(
         session, Facility, Facility.updated_at, FacilitySync, since, limit
     )
     booking_links = await _collect(
-        session, BookingLink, BookingLink.created_at, BookingLinkSync, since, limit
+        session, BookingLink, BookingLink.updated_at, BookingLinkSync, since, limit
     )
     platforms = await _collect(
         session,

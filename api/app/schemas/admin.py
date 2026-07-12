@@ -47,7 +47,7 @@ def _check_vocab(values: list[str] | None, allowed: set[str], label: str) -> lis
 class _JsonMetaMixin(BaseModel):
     enrichment_meta: Any = None
 
-    @field_validator("enrichment_meta", mode="before")
+    @field_validator("enrichment_meta", "department_info", mode="before", check_fields=False)
     @classmethod
     def _parse_meta(cls, v: Any) -> Any:
         # asyncpg may return jsonb as a raw JSON string; parse it for the client.
@@ -67,6 +67,7 @@ class FacilityAdminOut(FacilityOut, _JsonMetaMixin):
     date_collected: dt.date | None = None
     date_verified: dt.date | None = None
     notes: str | None = None
+    department_info: Any = None  # hospitals: derm-department findings (011)
     is_aesthetic_only: bool | None = None
     classification_confidence: float | None = None
     classification_reason: str | None = None
@@ -134,6 +135,9 @@ class _FacilityFields(BaseModel):
     date_verified: dt.date | None = None
     notes: str | None = None
     needs_review: bool | None = None
+    description: str | None = None
+    photo_url: str | None = None
+    photo_attribution: str | None = None
 
     @field_validator("services", mode="after", check_fields=False)
     @classmethod
@@ -183,6 +187,7 @@ class _DoctorFields(BaseModel):
     city: str | None = None
     region: str | None = None
     photo_url: str | None = None
+    description: str | None = None
 
     @field_validator("specialties", mode="after", check_fields=False)
     @classmethod
@@ -241,6 +246,7 @@ class BookingLinkCreate(BaseModel):
     available_text: str | None = None
     is_active: bool = True
     last_verified: dt.date | None = None
+    next_available: dt.datetime | None = None
 
 
 class BookingLinkUpdate(BaseModel):
@@ -255,6 +261,7 @@ class BookingLinkUpdate(BaseModel):
     available_text: str | None = None
     is_active: bool | None = None
     last_verified: dt.date | None = None
+    next_available: dt.datetime | None = None
 
 
 # --- Affiliation inputs ------------------------------------------------------------
