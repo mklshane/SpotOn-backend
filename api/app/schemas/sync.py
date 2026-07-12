@@ -68,9 +68,10 @@ class FacilitySync(ORMModel):
     description: str | None = None
     photo_url: str | None = None  # our Storage URL, stable
     photo_attribution: str | None = None  # must be displayed with the photo (Google policy)
+    department_info: Any = None  # hospitals: {has_derm_department, department_name, ...}
     updated_at: dt.datetime
 
-    @field_validator("weekday_hours", "weekend_hours", mode="before")
+    @field_validator("weekday_hours", "weekend_hours", "department_info", mode="before")
     @classmethod
     def _parse_json(cls, v: Any) -> Any:
         if isinstance(v, str):
