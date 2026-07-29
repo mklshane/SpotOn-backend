@@ -19,6 +19,7 @@ from app.schemas.admin import (
     FACILITY_KINDS,
     FACILITY_STATUSES,
     FACILITY_TYPES,
+    RETIRED_FACILITY_KINDS,
     AdminMetaOut,
 )
 
@@ -35,6 +36,7 @@ async def admin_meta() -> AdminMetaOut:
         facility_statuses=FACILITY_STATUSES,
         facility_types=FACILITY_TYPES,
         types=FACILITY_KINDS,
+        retired_types=RETIRED_FACILITY_KINDS,
     )
 
 

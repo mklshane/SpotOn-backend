@@ -65,8 +65,16 @@ async def test_admin_meta_shape_for_admin_user(client):
     resp = await client.get("/admin/meta", headers=headers)
     assert resp.status_code == 200
     body = resp.json()
-    assert set(body) == {"services", "specialties", "facility_statuses", "facility_types", "types"}
+    assert set(body) == {
+        "services", "specialties", "facility_statuses", "facility_types",
+        "types", "retired_types",
+    }
     assert "excluded" in body["facility_statuses"]
+    # The directory is dermatology-first: labs and cancer centers are retired kinds,
+    # never offered as options, and the specialty vocab is derm subspecialties only.
+    assert set(body["retired_types"]) == {"oncology_center", "pathology_lab", "diagnostic_center"}
+    assert not set(body["types"]) & set(body["retired_types"])
+    assert not {"surgical_oncology", "medical_oncology"} & set(body["specialties"])
 
     resp = await client.get("/admin/facilities", params={"limit": 5}, headers=headers)
     assert resp.status_code == 200

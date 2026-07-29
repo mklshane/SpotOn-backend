@@ -11,9 +11,12 @@ SERVICES = {
     "total_body_photography", "teledermatology", "oncology_treatment",
 }
 
+# Dermatology subspecialties only. The directory routes patients to a derm consult
+# first, so the non-derm oncology tags (surgical_oncology, medical_oncology) were
+# retired — nothing ever assigned them.
 SPECIALTIES = {
     "general_dermatology", "oncodermatology", "dermatopathology", "dermoscopy",
-    "dermatologic_surgery", "surgical_oncology", "medical_oncology",
+    "dermatologic_surgery",
 }
 
 

@@ -47,6 +47,7 @@ async def list_facilities_admin(
     region: str | None = Query(None),
     has_philhealth: bool | None = Query(None),
     status_: str | None = Query(None, alias="status"),
+    type_: str | None = Query(None, alias="type", description="facilities.type kind."),
     facility_type: str | None = Query(None),
     needs_review: bool | None = Query(None),
     has_booking: bool | None = Query(
@@ -71,6 +72,10 @@ async def list_facilities_admin(
         stmt = stmt.where(Facility.has_philhealth.is_(has_philhealth))
     if status_:
         stmt = stmt.where(Facility.status == status_)
+    if type_:
+        # Not validated against FACILITY_KINDS: retired kinds still exist on legacy
+        # rows and admins need to be able to filter for them.
+        stmt = stmt.where(Facility.type == type_)
     if facility_type:
         stmt = stmt.where(Facility.facility_type == facility_type)
     if needs_review is not None:

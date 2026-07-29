@@ -21,18 +21,27 @@ from app.schemas.directory import BookingLinkOut, DoctorOut, FacilityOut, Platfo
 
 FacilityStatus = Literal["verified", "unverified", "pending", "rejected", "excluded"]
 FacilityType = Literal["medical", "aesthetic", "mixed", "unknown"]
-# facilities.type — mirrors the DB's facilities_type_check constraint.
+# facilities.type — the DB's facilities_type_check constraint still permits the retired
+# kinds below, because legacy rows hold them. The app layer is what narrows the vocab.
 FacilityKind = Literal[
-    "dermatology_clinic", "oncology_center", "pathology_lab", "government_hospital",
-    "private_hospital", "medical_center", "diagnostic_center",
+    "dermatology_clinic", "government_hospital", "private_hospital", "medical_center",
+]
+# Retired: standalone labs and cancer centers aren't consult destinations — a patient
+# should see a dermatologist first, who refers onward. Creates reject these and
+# /admin/meta never offers them, but updates still accept them so the legacy rows
+# (migration 012 excluded them from the directory) stay editable in the admin.
+RetiredFacilityKind = Literal["oncology_center", "pathology_lab", "diagnostic_center"]
+AnyFacilityKind = Literal[
+    "dermatology_clinic", "government_hospital", "private_hospital", "medical_center",
+    "oncology_center", "pathology_lab", "diagnostic_center",
 ]
 
 FACILITY_STATUSES = ["verified", "unverified", "pending", "rejected", "excluded"]
 FACILITY_TYPES = ["medical", "aesthetic", "mixed", "unknown"]
 FACILITY_KINDS = [
-    "dermatology_clinic", "oncology_center", "pathology_lab", "government_hospital",
-    "private_hospital", "medical_center", "diagnostic_center",
+    "dermatology_clinic", "government_hospital", "private_hospital", "medical_center",
 ]
+RETIRED_FACILITY_KINDS = ["oncology_center", "pathology_lab", "diagnostic_center"]
 
 
 def _check_vocab(values: list[str] | None, allowed: set[str], label: str) -> list[str] | None:
@@ -158,7 +167,9 @@ class FacilityCreate(_FacilityFields):
 
 class FacilityUpdate(_FacilityFields):
     name: str | None = Field(default=None, min_length=1)
-    type: FacilityKind | None = None
+    # AnyFacilityKind, not FacilityKind: the admin form always resends `type`, so a
+    # legacy pathology_lab would be unpatchable if updates rejected retired kinds.
+    type: AnyFacilityKind | None = None
     address: str | None = Field(default=None, min_length=1)
     city: str | None = Field(default=None, min_length=1)
     province: str | None = Field(default=None, min_length=1)
@@ -291,4 +302,7 @@ class AdminMetaOut(BaseModel):
     specialties: list[str]
     facility_statuses: list[str]
     facility_types: list[str]
-    types: list[str]  # facilities.type values (facilities_type_check constraint)
+    types: list[str]  # facilities.type values offered for new/edited facilities
+    # Read-only: kinds no longer offered, still present on legacy rows. The admin
+    # uses these to filter for them; they are never form options.
+    retired_types: list[str]
