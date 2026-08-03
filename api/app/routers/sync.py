@@ -5,11 +5,11 @@ the next call. Each collection is capped; if a collection has more rows than the
 cap, `has_more` is true and `next_cursor` is the change timestamp the client
 should pass as `since` to continue paging that collection.
 
-Change timestamps: doctors/facilities/booking_links use `updated_at`
-(booking_links' is trigger-maintained since migration 011, so scraper refreshes
-re-sync); telemedicine_platforms has no `updated_at`, so `created_at` is used.
-Hard deletes are not tracked (no tombstones); a periodic full refresh
-reconciles them.
+Change timestamps: doctors/facilities/booking_links/doctor_facilities use
+`updated_at` (booking_links' is trigger-maintained since migration 011 and
+doctor_facility's since 013, so scraper refreshes re-sync);
+telemedicine_platforms has no `updated_at`, so `created_at` is used. Hard
+deletes are not tracked (no tombstones); a periodic full refresh reconciles them.
 """
 from __future__ import annotations
 
@@ -20,9 +20,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
-from app.models import BookingLink, Doctor, Facility, TelemedicinePlatform
+from app.models import (
+    BookingLink,
+    Doctor,
+    DoctorFacility,
+    Facility,
+    TelemedicinePlatform,
+)
 from app.schemas.sync import (
     BookingLinkSync,
+    DoctorFacilitySync,
     DoctorSync,
     FacilitySync,
     PlatformSync,
@@ -63,6 +70,14 @@ async def sync(
     facilities = await _collect(
         session, Facility, Facility.updated_at, FacilitySync, since, limit
     )
+    doctor_facilities = await _collect(
+        session,
+        DoctorFacility,
+        DoctorFacility.updated_at,
+        DoctorFacilitySync,
+        since,
+        limit,
+    )
     booking_links = await _collect(
         session, BookingLink, BookingLink.updated_at, BookingLinkSync, since, limit
     )
@@ -79,6 +94,7 @@ async def sync(
         synced_at=synced_at,
         doctors=doctors,
         facilities=facilities,
+        doctor_facilities=doctor_facilities,
         booking_links=booking_links,
         telemedicine_platforms=platforms,
     )

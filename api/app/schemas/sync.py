@@ -32,6 +32,7 @@ class DoctorSync(ORMModel):
     pds_certified: bool | None = None
     specialties: list[str]
     specialties_display: str | None = None
+    status: str | None = None  # 'excluded' rows are hidden by the app (013)
     city: str | None = None
     region: str | None = None
     phone: str | None = None
@@ -40,6 +41,18 @@ class DoctorSync(ORMModel):
     photo_url: str | None = None
     description: str | None = None
     updated_at: dt.datetime
+
+
+class DoctorFacilitySync(ORMModel):
+    """Where a doctor practises. Without this the app can show a doctor and a
+    clinic but never the edge between them."""
+
+    id: uuid.UUID
+    doctor_id: uuid.UUID
+    facility_id: uuid.UUID
+    is_primary: bool | None = None
+    schedule: str | None = None
+    updated_at: dt.datetime  # trigger-maintained (013), the /sync cursor
 
 
 class FacilitySync(ORMModel):
@@ -115,5 +128,6 @@ class SyncResponse(BaseModel):
     synced_at: dt.datetime
     doctors: SyncCollection[DoctorSync]
     facilities: SyncCollection[FacilitySync]
+    doctor_facilities: SyncCollection[DoctorFacilitySync]
     booking_links: SyncCollection[BookingLinkSync]
     telemedicine_platforms: SyncCollection[PlatformSync]

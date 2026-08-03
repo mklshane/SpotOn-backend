@@ -72,12 +72,23 @@ async def list_doctors(
     q: str | None = Query(None, description="Case-insensitive name search."),
     platform: str | None = Query(None, description="Platform slug; doctors with an active link there."),
     has_booking: bool | None = Query(None),
+    status_: str | None = Query(None, alias="status",
+                                description="Exact status; default hides 'excluded'."),
     sort: DoctorSort | None = Query(None),
     order: Order = Query("asc"),
 ) -> Page[DoctorOut]:
     validate_specialties(specialty)
 
     stmt: Select = select(Doctor)
+
+    if status_:
+        stmt = stmt.where(Doctor.status == status_)
+    else:
+        # Hide rows excluded by the directory cleanup (021 soft-excludes clinic
+        # records the collector wrote into this table). is_distinct_from keeps
+        # NULL and every other status visible — only 'excluded' is filtered out,
+        # matching the facilities behaviour below.
+        stmt = stmt.where(Doctor.status.is_distinct_from("excluded"))
 
     if specialty:
         col = Doctor.specialties

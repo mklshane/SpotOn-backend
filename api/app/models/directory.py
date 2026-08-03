@@ -50,6 +50,7 @@ class Doctor(Base):
     city: Mapped[str | None] = mapped_column(Text)
     region: Mapped[str | None] = mapped_column(Text)
     specialties_display: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(Text)  # soft exclusion, mirrors facilities (013)
     photo_url: Mapped[str | None] = mapped_column(Text)  # consent-only; stays null
     description: Mapped[str | None] = mapped_column(Text)  # short professional bio (011)
     enriched_by: Mapped[str | None] = mapped_column(Text)  # enrichment provenance (006)
@@ -127,6 +128,7 @@ class DoctorFacility(Base):
     is_primary: Mapped[bool | None] = mapped_column(Boolean)
     schedule: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (013); /sync cursor
 
 
 class TelemedicinePlatform(Base):
