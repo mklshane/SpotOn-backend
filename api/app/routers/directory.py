@@ -162,7 +162,14 @@ async def get_doctor(
 ) -> DoctorOut:
     d = (
         await session.execute(
-            select(Doctor).where(Doctor.id == doctor_id, Doctor.deleted_at.is_(None))
+            # Excluded rows are hidden here too, matching /directory/doctors.
+            # The admin endpoints deliberately still return them — that is where
+            # an exclusion gets reviewed and reversed.
+            select(Doctor).where(
+                Doctor.id == doctor_id,
+                Doctor.deleted_at.is_(None),
+                Doctor.status.is_distinct_from("excluded"),
+            )
         )
     ).scalars().first()
     if d is None:
@@ -256,7 +263,9 @@ async def get_facility(
     f = (
         await session.execute(
             select(Facility).where(
-                Facility.id == facility_id, Facility.deleted_at.is_(None)
+                Facility.id == facility_id,
+                Facility.deleted_at.is_(None),
+                Facility.status.is_distinct_from("excluded"),
             )
         )
     ).scalars().first()
