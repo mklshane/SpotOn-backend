@@ -56,6 +56,7 @@ class Doctor(Base):
     enriched_by: Mapped[str | None] = mapped_column(Text)  # enrichment provenance (006)
     enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     enrichment_meta: Mapped[dict | None] = mapped_column(JSONB)
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
 
     booking_links: Mapped[list[BookingLink]] = relationship(
         back_populates="doctor", lazy="selectin"
@@ -113,6 +114,7 @@ class Facility(Base):
     enriched_by: Mapped[str | None] = mapped_column(Text)
     enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     enrichment_meta: Mapped[dict | None] = mapped_column(JSONB)
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
 
 
 class DoctorFacility(Base):
@@ -129,6 +131,7 @@ class DoctorFacility(Base):
     schedule: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (013); /sync cursor
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
 
 
 class TelemedicinePlatform(Base):
@@ -143,6 +146,8 @@ class TelemedicinePlatform(Base):
     is_dedicated_derma: Mapped[bool] = mapped_column(Boolean, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (014); /sync cursor
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
 
 
 class BookingLink(Base):
@@ -166,6 +171,7 @@ class BookingLink(Base):
     next_available: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # first bookable slot (011)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (011); /sync cursor
+    deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
 
     doctor: Mapped[Doctor] = relationship(back_populates="booking_links")
     platform: Mapped[TelemedicinePlatform] = relationship(lazy="selectin")

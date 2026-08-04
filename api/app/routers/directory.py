@@ -53,6 +53,7 @@ async def platforms(session: AsyncSession = Depends(get_session)) -> list[Platfo
     rows = (
         await session.execute(
             select(TelemedicinePlatform)
+            .where(TelemedicinePlatform.deleted_at.is_(None))
             .where(TelemedicinePlatform.is_active.is_(True))
             .order_by(TelemedicinePlatform.name)
         )
@@ -79,7 +80,7 @@ async def list_doctors(
 ) -> Page[DoctorOut]:
     validate_specialties(specialty)
 
-    stmt: Select = select(Doctor)
+    stmt: Select = select(Doctor).where(Doctor.deleted_at.is_(None))
 
     if status_:
         stmt = stmt.where(Doctor.status == status_)
@@ -160,7 +161,9 @@ async def get_doctor(
     doctor_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ) -> DoctorOut:
     d = (
-        await session.execute(select(Doctor).where(Doctor.id == doctor_id))
+        await session.execute(
+            select(Doctor).where(Doctor.id == doctor_id, Doctor.deleted_at.is_(None))
+        )
     ).scalars().first()
     if d is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
@@ -199,7 +202,7 @@ async def list_facilities(
         distance_expr = ST_Distance(Facility.location, point).label("distance_m")
         stmt: Select = select(Facility, distance_expr)
     else:
-        stmt = select(Facility)
+        stmt = select(Facility).where(Facility.deleted_at.is_(None))
 
     if service:
         col = Facility.services
@@ -251,7 +254,11 @@ async def get_facility(
     facility_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ) -> FacilityOut:
     f = (
-        await session.execute(select(Facility).where(Facility.id == facility_id))
+        await session.execute(
+            select(Facility).where(
+                Facility.id == facility_id, Facility.deleted_at.is_(None)
+            )
+        )
     ).scalars().first()
     if f is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Facility not found")

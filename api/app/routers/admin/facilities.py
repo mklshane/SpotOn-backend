@@ -29,7 +29,11 @@ def _now() -> dt.datetime:
 
 async def _get_or_404(session: AsyncSession, facility_id: uuid.UUID) -> Facility:
     f = (
-        await session.execute(select(Facility).where(Facility.id == facility_id))
+        await session.execute(
+            select(Facility).where(
+                Facility.id == facility_id, Facility.deleted_at.is_(None)
+            )
+        )
     ).scalars().first()
     if f is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Facility not found")
@@ -58,7 +62,7 @@ async def list_facilities_admin(
 ) -> Page[FacilityAdminOut]:
     validate_services(service)
 
-    stmt: Select = select(Facility)
+    stmt: Select = select(Facility).where(Facility.deleted_at.is_(None))
     if q:
         stmt = stmt.where(Facility.name.ilike(f"%{q}%"))
     if service:

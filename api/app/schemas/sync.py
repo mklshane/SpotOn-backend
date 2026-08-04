@@ -41,6 +41,7 @@ class DoctorSync(ORMModel):
     photo_url: str | None = None
     description: str | None = None
     updated_at: dt.datetime
+    deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
 
 class DoctorFacilitySync(ORMModel):
@@ -53,6 +54,7 @@ class DoctorFacilitySync(ORMModel):
     is_primary: bool | None = None
     schedule: str | None = None
     updated_at: dt.datetime  # trigger-maintained (013), the /sync cursor
+    deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
 
 class FacilitySync(ORMModel):
@@ -83,6 +85,7 @@ class FacilitySync(ORMModel):
     photo_attribution: str | None = None  # must be displayed with the photo (Google policy)
     department_info: Any = None  # hospitals: {has_derm_department, department_name, ...}
     updated_at: dt.datetime
+    deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
     @field_validator("weekday_hours", "weekend_hours", "department_info", mode="before")
     @classmethod
@@ -110,6 +113,7 @@ class BookingLinkSync(ORMModel):
     next_available: dt.datetime | None = None  # first bookable slot from the platform
     created_at: dt.datetime
     updated_at: dt.datetime | None = None  # change timestamp (trigger-maintained, 011)
+    deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
 
 class PlatformSync(ORMModel):
@@ -121,7 +125,9 @@ class PlatformSync(ORMModel):
     description: str | None = None
     is_dedicated_derma: bool
     is_active: bool
-    created_at: dt.datetime  # change timestamp (no updated_at on this table)
+    created_at: dt.datetime
+    updated_at: dt.datetime | None = None  # change timestamp (trigger-maintained, 014); /sync cursor
+    deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
 
 class SyncResponse(BaseModel):

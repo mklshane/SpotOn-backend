@@ -19,7 +19,10 @@ router = APIRouter(prefix="/platforms")
 async def _get_or_404(session: AsyncSession, platform_id: uuid.UUID) -> TelemedicinePlatform:
     p = (
         await session.execute(
-            select(TelemedicinePlatform).where(TelemedicinePlatform.id == platform_id)
+            select(TelemedicinePlatform).where(
+                TelemedicinePlatform.id == platform_id,
+                TelemedicinePlatform.deleted_at.is_(None),
+            )
         )
     ).scalars().first()
     if p is None:
@@ -39,7 +42,11 @@ async def list_platforms_admin(
     session: AsyncSession = Depends(get_session),
 ) -> list[PlatformAdminOut]:
     rows = (
-        await session.execute(select(TelemedicinePlatform).order_by(TelemedicinePlatform.name))
+        await session.execute(
+            select(TelemedicinePlatform)
+            .where(TelemedicinePlatform.deleted_at.is_(None))
+            .order_by(TelemedicinePlatform.name)
+        )
     ).scalars().all()
     return [PlatformAdminOut.model_validate(p) for p in rows]
 

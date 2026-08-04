@@ -54,7 +54,9 @@ def _serialize_doctor_admin(d: Doctor) -> DoctorAdminOut:
 
 async def _get_doctor_or_404(session: AsyncSession, doctor_id: uuid.UUID) -> Doctor:
     d = (
-        await session.execute(select(Doctor).where(Doctor.id == doctor_id))
+        await session.execute(
+            select(Doctor).where(Doctor.id == doctor_id, Doctor.deleted_at.is_(None))
+        )
     ).scalars().first()
     if d is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
@@ -99,7 +101,7 @@ async def list_doctors_admin(
 ) -> Page[DoctorAdminOut]:
     validate_specialties(specialty)
 
-    stmt: Select = select(Doctor)
+    stmt: Select = select(Doctor).where(Doctor.deleted_at.is_(None))
     if q:
         stmt = stmt.where(Doctor.name.ilike(f"%{q}%"))
     if specialty:
@@ -192,7 +194,11 @@ async def _check_platform(session: AsyncSession, platform_id: uuid.UUID) -> None
 
 async def _get_link_or_404(session: AsyncSession, link_id: uuid.UUID) -> BookingLink:
     link = (
-        await session.execute(select(BookingLink).where(BookingLink.id == link_id))
+        await session.execute(
+            select(BookingLink).where(
+                BookingLink.id == link_id, BookingLink.deleted_at.is_(None)
+            )
+        )
     ).scalars().first()
     if link is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking link not found")
@@ -245,7 +251,11 @@ async def delete_booking_link(
 
 async def _get_affiliation_or_404(session: AsyncSession, aff_id: uuid.UUID) -> DoctorFacility:
     aff = (
-        await session.execute(select(DoctorFacility).where(DoctorFacility.id == aff_id))
+        await session.execute(
+            select(DoctorFacility).where(
+                DoctorFacility.id == aff_id, DoctorFacility.deleted_at.is_(None)
+            )
+        )
     ).scalars().first()
     if aff is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Affiliation not found")
@@ -260,7 +270,11 @@ async def create_affiliation(
 ) -> AffiliationOut:
     await _get_doctor_or_404(session, payload.doctor_id)
     facility = (
-        await session.execute(select(Facility).where(Facility.id == payload.facility_id))
+        await session.execute(
+            select(Facility).where(
+                Facility.id == payload.facility_id, Facility.deleted_at.is_(None)
+            )
+        )
     ).scalars().first()
     if facility is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Facility not found")

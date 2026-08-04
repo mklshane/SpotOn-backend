@@ -5,11 +5,15 @@ the next call. Each collection is capped; if a collection has more rows than the
 cap, `has_more` is true and `next_cursor` is the change timestamp the client
 should pass as `since` to continue paging that collection.
 
-Change timestamps: doctors/facilities/booking_links/doctor_facilities use
-`updated_at` (booking_links' is trigger-maintained since migration 011 and
-doctor_facility's since 013, so scraper refreshes re-sync);
-telemedicine_platforms has no `updated_at`, so `created_at` is used. Hard
-deletes are not tracked (no tombstones); a periodic full refresh reconciles them.
+Change timestamps: every collection pages by `updated_at`, trigger-maintained on
+booking_links (011), doctor_facility (013) and telemedicine_platforms (014), so
+a scraper refresh re-syncs.
+
+Deletions: rows are soft-deleted since migration 014, and a tombstone
+(`deleted_at` set) is RETURNED here deliberately — that is the only way a client
+learns a row is gone. The client purges it locally and the patient-facing
+/directory endpoints filter tombstones out. Rows hard-deleted before 014 left no
+record; the client's full-sync sweep is what clears those.
 """
 from __future__ import annotations
 
@@ -84,7 +88,7 @@ async def sync(
     platforms = await _collect(
         session,
         TelemedicinePlatform,
-        TelemedicinePlatform.created_at,
+        TelemedicinePlatform.updated_at,
         PlatformSync,
         since,
         limit,
