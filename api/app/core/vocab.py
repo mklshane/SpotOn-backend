@@ -9,6 +9,7 @@ SERVICES = {
     "dermoscopy", "skin_biopsy", "excision", "mohs_surgery", "cryotherapy",
     "electrosurgery", "curettage", "histopathology", "immunohistochemistry",
     "total_body_photography", "teledermatology", "oncology_treatment",
+    "skin_cancer_screening",
 }
 
 # Dermatology subspecialties only. The directory routes patients to a derm consult
