@@ -145,3 +145,36 @@ async def test_change_password(client: AsyncClient, creds: dict):
         "/auth/login", json={"identifier": creds["email"], "password": new_password}
     )
     assert new_login.status_code == 200, new_login.text
+
+
+@pytest.mark.asyncio
+async def test_delete_account(client: AsyncClient, creds: dict):
+    r = await client.post("/auth/register", json=creds)
+    assert r.status_code == 201, r.text
+    body = r.json()
+    access, refresh_token = body["access_token"], body["refresh_token"]
+
+    assert (await client.delete("/me")).status_code == 401  # unauthenticated
+
+    gone = await client.delete("/me", headers=_auth(access))
+    assert gone.status_code == 204, gone.text
+
+    # The row is really gone, not just flagged.
+    async with SessionLocal() as s:
+        remaining = (await s.execute(
+            text("SELECT count(*) FROM public.users WHERE email = :e"), {"e": creds["email"]}
+        )).scalar_one()
+    assert remaining == 0
+
+    # Every session dies with it: the access token no longer resolves to a user,
+    # the refresh token is gone, and the identifiers are free to register again.
+    assert (await client.get("/me", headers=_auth(access))).status_code == 401
+    assert (
+        await client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    ).status_code == 401
+    assert (
+        await client.post(
+            "/auth/login", json={"identifier": creds["email"], "password": creds["password"]}
+        )
+    ).status_code == 401
+    assert (await client.post("/auth/register", json=creds)).status_code == 201

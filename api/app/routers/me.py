@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.phone import normalize_ph_phone
 from app.core.security import CurrentUser, get_current_user
-from app.models import User
+from app.models import RefreshToken, User
 from app.schemas.user import UserOut, UserUpdate
 
 router = APIRouter(prefix="/me", tags=["me"])
@@ -67,6 +67,26 @@ async def update_me(
     await session.commit()
     await session.refresh(user)
     return UserOut.model_validate(user)
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Permanently delete the signed-in account. Irreversible.
+
+    `public.users` and `public.refresh_tokens` are the only user-scoped tables —
+    screenings live on the device, never on the server — so removing the row
+    removes the account outright. The FK cascades the refresh tokens with it, which
+    is what signs every other device out; we delete them explicitly first anyway so
+    the sessions die even if the cascade is ever dropped from the schema.
+    """
+    user = await _get_user(session, current)
+    await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+    await session.delete(user)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/consent", response_model=UserOut)

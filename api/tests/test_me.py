@@ -7,6 +7,7 @@ import pytest
 @pytest.mark.parametrize("method,path", [
     ("get", "/me"),
     ("patch", "/me"),
+    ("delete", "/me"),
     ("post", "/me/consent"),
 ])
 async def test_me_requires_auth(client, method, path):
