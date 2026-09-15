@@ -82,3 +82,66 @@ async def test_register_login_refresh_me(client: AsyncClient, creds: dict):
     assert out.status_code == 204
     after = await client.post("/auth/refresh", json={"refresh_token": new_refresh})
     assert after.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_change_password(client: AsyncClient, creds: dict):
+    r = await client.post("/auth/register", json=creds)
+    assert r.status_code == 201, r.text
+    body = r.json()
+    access, refresh_token = body["access_token"], body["refresh_token"]
+    new_password = "NewTestPass456!"
+
+    # Unauthenticated → 401
+    anon = await client.post(
+        "/auth/change-password",
+        json={"current_password": creds["password"], "new_password": new_password},
+    )
+    assert anon.status_code == 401
+
+    # Wrong current password → 400 (NOT 401: a 401 would send the client's
+    # refresh-and-retry interceptor off spending a refresh token).
+    wrong = await client.post(
+        "/auth/change-password",
+        json={"current_password": "not-my-password", "new_password": new_password},
+        headers=_auth(access),
+    )
+    assert wrong.status_code == 400, wrong.text
+
+    # Too short / identical to the current password → 422 from the schema
+    for payload in (
+        {"current_password": creds["password"], "new_password": "short"},
+        {"current_password": creds["password"], "new_password": creds["password"]},
+    ):
+        bad = await client.post("/auth/change-password", json=payload, headers=_auth(access))
+        assert bad.status_code == 422, bad.text
+
+    # Happy path: new tokens come back and the old refresh token is revoked
+    ok = await client.post(
+        "/auth/change-password",
+        json={"current_password": creds["password"], "new_password": new_password},
+        headers=_auth(access),
+    )
+    assert ok.status_code == 200, ok.text
+    rotated = ok.json()
+    assert rotated["refresh_token"] != refresh_token
+    assert rotated["user"]["email"] == creds["email"]
+
+    stale = await client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    assert stale.status_code == 401  # other devices are signed out
+
+    # The returned tokens still work, and login now needs the new password
+    me = await client.get("/me", headers=_auth(rotated["access_token"]))
+    assert me.status_code == 200
+    assert (
+        await client.post("/auth/refresh", json={"refresh_token": rotated["refresh_token"]})
+    ).status_code == 200
+
+    old_login = await client.post(
+        "/auth/login", json={"identifier": creds["email"], "password": creds["password"]}
+    )
+    assert old_login.status_code == 401
+    new_login = await client.post(
+        "/auth/login", json={"identifier": creds["email"], "password": new_password}
+    )
+    assert new_login.status_code == 200, new_login.text

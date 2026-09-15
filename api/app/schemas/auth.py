@@ -45,6 +45,19 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1)
 
 
+class ChangePasswordIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def _must_differ(self):
+        if self.current_password == self.new_password:
+            raise ValueError("Your new password must be different from your current one.")
+        return self
+
+
 class RefreshIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

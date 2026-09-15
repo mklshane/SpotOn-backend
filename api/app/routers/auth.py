@@ -1,4 +1,4 @@
-"""Custom auth endpoints: register, login, refresh, logout.
+"""Custom auth endpoints: register, login, change-password, refresh, logout.
 
 Email OR phone + password. No verification — accounts are active immediately.
 Short-lived access JWT + a revocable, rotating refresh token.
@@ -16,13 +16,15 @@ from app.core.db import get_session
 from app.core.passwords import hash_password, verify_password
 from app.core.phone import normalize_ph_phone
 from app.core.security import (
+    CurrentUser,
     access_token_ttl_seconds,
     create_access_token,
+    get_current_user,
     hash_refresh_token,
     new_refresh_token,
 )
 from app.models import RefreshToken, User
-from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenOut
+from app.schemas.auth import ChangePasswordIn, LoginIn, RefreshIn, RegisterIn, TokenOut
 from app.schemas.user import UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -107,6 +109,49 @@ async def login(payload: LoginIn, session: AsyncSession = Depends(get_session)) 
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email/phone or password.",
         )
+    return await _issue_tokens(session, user)
+
+
+@router.post("/change-password", response_model=TokenOut)
+async def change_password(
+    payload: ChangePasswordIn,
+    current: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> TokenOut:
+    """Re-authenticate with the current password, then rotate the credential.
+
+    Changing a password invalidates every refresh token the account holds, so a
+    stolen session on another device dies here. The caller gets a fresh pair back
+    so the device doing the change stays signed in.
+    """
+    user = (await session.execute(select(User).where(User.id == current.id))).scalars().first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found.")
+
+    # 400, not 401: the access token is perfectly valid — it is the *password*
+    # that is wrong. A 401 here would make the client's refresh-and-retry
+    # interceptor burn a refresh token and replay the request before failing.
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your current password is incorrect.",
+        )
+
+    user.hashed_password = hash_password(payload.new_password)
+    user.updated_at = _now()
+
+    now = _now()
+    for row in (
+        await session.execute(
+            select(RefreshToken).where(
+                RefreshToken.user_id == user.id,
+                RefreshToken.revoked_at.is_(None),
+            )
+        )
+    ).scalars().all():
+        row.revoked_at = now
+
+    await session.flush()
     return await _issue_tokens(session, user)
 
 
