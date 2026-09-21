@@ -7,6 +7,8 @@ services:
     name: spoton-api
     runtime: python
     plan: free
+    # Next to the Supabase DB (ap-southeast-1). Oregon added ~1s per request.
+    region: singapore
     rootDir: api
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
