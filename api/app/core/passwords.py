@@ -1,4 +1,9 @@
-"""Password hashing via bcrypt."""
+"""Password hashing via bcrypt.
+
+bcrypt is deliberately CPU-heavy and synchronous: callers in async handlers must run these
+through `run_in_threadpool`, or one login stalls every other request on the event loop (and on
+Render free's 0.1 CPU a hash takes seconds).
+"""
 from __future__ import annotations
 
 import bcrypt

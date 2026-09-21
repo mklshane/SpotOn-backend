@@ -9,6 +9,7 @@ import datetime as dt
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,7 +79,7 @@ async def register(payload: RegisterIn, session: AsyncSession = Depends(get_sess
         id=uuid.uuid4(),
         email=email,
         phone=phone,
-        hashed_password=hash_password(payload.password),
+        hashed_password=await run_in_threadpool(hash_password, payload.password),
         full_name=full_name or None,
         is_active=True,
         is_verified=False,
@@ -104,7 +105,9 @@ async def login(payload: LoginIn, session: AsyncSession = Depends(get_session)) 
         await session.execute(select(User).where(or_(*clauses)))
     ).scalars().first()
 
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    if user is None or not await run_in_threadpool(
+        verify_password, payload.password, user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email/phone or password.",
@@ -131,13 +134,15 @@ async def change_password(
     # 400, not 401: the access token is perfectly valid — it is the *password*
     # that is wrong. A 401 here would make the client's refresh-and-retry
     # interceptor burn a refresh token and replay the request before failing.
-    if not verify_password(payload.current_password, user.hashed_password):
+    if not await run_in_threadpool(
+        verify_password, payload.current_password, user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Your current password is incorrect.",
         )
 
-    user.hashed_password = hash_password(payload.new_password)
+    user.hashed_password = await run_in_threadpool(hash_password, payload.new_password)
     user.updated_at = _now()
 
     now = _now()
