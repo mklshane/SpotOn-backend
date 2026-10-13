@@ -6,8 +6,17 @@ elsewhere with a real token and is not part of the automated suite.
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.core import ratelimit
 from app.core.db import engine
 from app.main import app
+
+
+@pytest_asyncio.fixture(autouse=True)
+def _fresh_rate_limits():
+    # Limits are process-global; without this, one test's failed logins lock out the next.
+    ratelimit.reset_all()
+    yield
+    ratelimit.reset_all()
 
 
 @pytest_asyncio.fixture

@@ -16,6 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.passwords import hash_password, verify_password
 from app.core.phone import normalize_ph_phone
+from app.core.ratelimit import (
+    limit_by_ip,
+    login_failures,
+    login_ip,
+    refresh_ip,
+    register_ip,
+    too_many,
+)
 from app.core.security import (
     CurrentUser,
     access_token_ttl_seconds,
@@ -29,6 +37,11 @@ from app.schemas.auth import ChangePasswordIn, LoginIn, RefreshIn, RegisterIn, T
 from app.schemas.user import UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# A real bcrypt hash (cost 12) of a throwaway string. Login verifies against it when the account
+# doesn't exist, so "no such user" costs the same bcrypt time as "wrong password" and response
+# timing can't be used to test which emails/phones are registered.
+_DUMMY_HASH = "$2b$12$gAMAus.3p0C/zkVQYHmW3uvDawhsvwEDDNuWD3Mw90E.dXZDuIg2K"
 
 
 def _now() -> dt.datetime:
@@ -55,7 +68,13 @@ async def _issue_tokens(session: AsyncSession, user: User) -> TokenOut:
     )
 
 
-@router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenOut,
+    status_code=status.HTTP_201_CREATED,
+    # Also throttles probing which emails/phones exist via the 409 below.
+    dependencies=[Depends(limit_by_ip(register_ip))],
+)
 async def register(payload: RegisterIn, session: AsyncSession = Depends(get_session)) -> TokenOut:
     email = payload.email
     phone = normalize_ph_phone(payload.phone)
@@ -91,10 +110,17 @@ async def register(payload: RegisterIn, session: AsyncSession = Depends(get_sess
     return await _issue_tokens(session, user)
 
 
-@router.post("/login", response_model=TokenOut)
+@router.post("/login", response_model=TokenOut, dependencies=[Depends(limit_by_ip(login_ip))])
 async def login(payload: LoginIn, session: AsyncSession = Depends(get_session)) -> TokenOut:
     email = payload.identifier.strip().lower()
     phone = normalize_ph_phone(payload.identifier)
+
+    # Per-account guess limit, checked before any bcrypt work. Keyed on the normalized
+    # identifier so "+63917..." and "0917..." share one budget.
+    attempt_key = f"login:{phone or email}"
+    wait = login_failures.retry_after(attempt_key)
+    if wait is not None:
+        raise too_many(wait)
 
     # Only match phone when one was actually parsed — `User.phone == None`
     # renders as `phone IS NULL` and would match arbitrary phone-less users.
@@ -105,13 +131,15 @@ async def login(payload: LoginIn, session: AsyncSession = Depends(get_session)) 
         await session.execute(select(User).where(or_(*clauses)))
     ).scalars().first()
 
-    if user is None or not await run_in_threadpool(
-        verify_password, payload.password, user.hashed_password
-    ):
+    hashed = user.hashed_password if user is not None else _DUMMY_HASH
+    ok = await run_in_threadpool(verify_password, payload.password, hashed)
+    if user is None or not ok:
+        login_failures.hit(attempt_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email/phone or password.",
         )
+    login_failures.reset(attempt_key)
     return await _issue_tokens(session, user)
 
 
@@ -131,17 +159,26 @@ async def change_password(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found.")
 
+    # Same guess budget as login: a stolen access token must not become an unlimited
+    # oracle for the account's current password.
+    attempt_key = f"change-password:{user.id}"
+    wait = login_failures.retry_after(attempt_key)
+    if wait is not None:
+        raise too_many(wait)
+
     # 400, not 401: the access token is perfectly valid — it is the *password*
     # that is wrong. A 401 here would make the client's refresh-and-retry
     # interceptor burn a refresh token and replay the request before failing.
     if not await run_in_threadpool(
         verify_password, payload.current_password, user.hashed_password
     ):
+        login_failures.hit(attempt_key)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Your current password is incorrect.",
         )
 
+    login_failures.reset(attempt_key)
     user.hashed_password = await run_in_threadpool(hash_password, payload.new_password)
     user.updated_at = _now()
 
@@ -160,7 +197,7 @@ async def change_password(
     return await _issue_tokens(session, user)
 
 
-@router.post("/refresh", response_model=TokenOut)
+@router.post("/refresh", response_model=TokenOut, dependencies=[Depends(limit_by_ip(refresh_ip))])
 async def refresh(payload: RefreshIn, session: AsyncSession = Depends(get_session)) -> TokenOut:
     token_hash = hash_refresh_token(payload.refresh_token)
     row = (

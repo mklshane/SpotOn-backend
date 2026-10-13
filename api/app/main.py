@@ -62,7 +62,17 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="SpotOn API", version="0.1.0", lifespan=lifespan)
+    # Interactive docs + the OpenAPI schema list every route (admin included). Handy in dev,
+    # free reconnaissance in prod - so they are only served outside ENV=prod.
+    public_docs = settings.ENV != "prod"
+    app = FastAPI(
+        title="SpotOn API",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url="/docs" if public_docs else None,
+        redoc_url="/redoc" if public_docs else None,
+        openapi_url="/openapi.json" if public_docs else None,
+    )
 
     app.add_middleware(
         CORSMiddleware,

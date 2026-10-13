@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def _check_jwt_secret(cls, v: str) -> str:
+        # Every access token is HS256-signed with this. Empty or short means anyone can
+        # forge a token for any user (admins included), so this is a hard startup error.
+        # Generate one with: python -c "import secrets; print(secrets.token_urlsafe(48))"
+        if len(v) < 32:
+            raise ValueError(
+                "JWT_SECRET must be set and at least 32 characters long."
+            )
+        return v
+
     @field_validator("DATABASE_URL")
     @classmethod
     def _check_async_driver(cls, v: str) -> str:
