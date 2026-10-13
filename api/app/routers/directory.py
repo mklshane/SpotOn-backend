@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.vocab import (
+    CONCERNS,
     SERVICES,
     SPECIALTIES,
+    validate_concerns,
     validate_services,
     validate_specialties,
 )
@@ -45,7 +47,7 @@ def _serialize_doctor(d: Doctor) -> DoctorOut:
 
 @router.get("/meta", response_model=MetaOut)
 async def meta() -> MetaOut:
-    return MetaOut(services=sorted(SERVICES), specialties=sorted(SPECIALTIES))
+    return MetaOut(services=sorted(SERVICES), specialties=sorted(SPECIALTIES), concerns=sorted(CONCERNS))
 
 
 @router.get("/platforms", response_model=list[PlatformOut])
@@ -183,6 +185,7 @@ async def list_facilities(
     page: Pagination = Depends(pagination),
     service: list[str] | None = Query(None, description="Repeatable service filter."),
     match: Literal["any", "all"] = Query("any"),
+    concern: list[str] | None = Query(None, description="Repeatable patient-concern filter (any)."),
     city: str | None = Query(None),
     region: str | None = Query(None),
     has_philhealth: bool | None = Query(None),
@@ -192,6 +195,7 @@ async def list_facilities(
     radius_m: int = Query(10000, ge=1, le=200000),
 ) -> Page[FacilityOut]:
     validate_services(service)
+    validate_concerns(concern)
 
     near = lat is not None and lng is not None
     if (lat is None) != (lng is None):
@@ -214,6 +218,8 @@ async def list_facilities(
     if service:
         col = Facility.services
         stmt = stmt.where(col.contains(service) if match == "all" else col.overlap(service))
+    if concern:
+        stmt = stmt.where(Facility.concerns.overlap(concern))
     if city:
         stmt = stmt.where(Facility.city.ilike(city))
     if region:

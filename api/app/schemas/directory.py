@@ -115,3 +115,4 @@ class FacilityOut(ORMModel):
 class MetaOut(BaseModel):
     services: list[str]
     specialties: list[str]
+    concerns: list[str] = []

@@ -21,6 +21,27 @@ SPECIALTIES = {
 }
 
 
+# Patient-facing concerns (016) — what a patient searches by. Mirrors
+# clinic-directory/enrich_common.py CONCERNS; both must move together.
+CONCERNS = {
+    "skin_cancer_mole_check", "acne", "eczema_rashes", "psoriasis", "pigmentation",
+    "hair_scalp", "nails", "infections", "pediatric_derm", "cosmetic",
+}
+
+
+def validate_concerns(values: list[str] | None) -> list[str] | None:
+    """Raise 422 if any value is not a known concern."""
+    if not values:
+        return values
+    unknown = sorted(set(values) - CONCERNS)
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown concern(s): {unknown}. Allowed: {sorted(CONCERNS)}",
+        )
+    return values
+
+
 def validate_services(values: list[str] | None) -> list[str] | None:
     """Raise 422 if any value is not a known service."""
     if not values:

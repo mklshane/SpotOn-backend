@@ -1,4 +1,4 @@
-from app.core.vocab import SERVICES, SPECIALTIES
+from app.core.vocab import CONCERNS, SERVICES, SPECIALTIES
 
 
 async def test_meta_lists_vocab(client):
@@ -7,6 +7,7 @@ async def test_meta_lists_vocab(client):
     body = resp.json()
     assert set(body["services"]) == SERVICES
     assert set(body["specialties"]) == SPECIALTIES
+    assert set(body["concerns"]) == CONCERNS
 
 
 async def test_doctors_page_shape(client):
@@ -82,3 +83,19 @@ async def test_sync_since_now_is_empty(client):
     body = (await client.get(f"/sync?since={now}")).json()
     for key in ("doctors", "facilities", "booking_links", "telemedicine_platforms"):
         assert body[key]["items"] == []
+
+
+async def test_facilities_rejects_unknown_concern(client):
+    resp = await client.get("/directory/facilities?concern=not_a_concern")
+    assert resp.status_code == 422
+
+
+async def test_sync_carries_concern_and_schedule_fields(client):
+    # Migration 016: the offline cache needs concerns + structured schedules.
+    resp = await client.get("/sync?limit=5")
+    assert resp.status_code == 200
+    body = resp.json()
+    for f in body["facilities"]["items"]:
+        assert {"concerns", "derm_status", "pds_skin_cancer_center"} <= f.keys()
+    for x in body["doctor_facilities"]["items"]:
+        assert {"schedule_days", "room", "phone", "source_url", "verified_at"} <= x.keys()

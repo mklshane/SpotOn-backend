@@ -40,6 +40,7 @@ class DoctorSync(ORMModel):
     google_maps_url: str | None = None
     photo_url: str | None = None
     description: str | None = None
+    concerns: list[str] = []  # patient-facing concerns (016)
     updated_at: dt.datetime
     deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
@@ -53,6 +54,11 @@ class DoctorFacilitySync(ORMModel):
     facility_id: uuid.UUID
     is_primary: bool | None = None
     schedule: str | None = None
+    schedule_days: int | None = None  # Mon=1..Sun=64 bitmask (016)
+    room: str | None = None
+    phone: str | None = None
+    source_url: str | None = None
+    verified_at: dt.datetime | None = None
     updated_at: dt.datetime  # trigger-maintained (013), the /sync cursor
     deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
@@ -84,6 +90,9 @@ class FacilitySync(ORMModel):
     photo_url: str | None = None  # our Storage URL, stable
     photo_attribution: str | None = None  # must be displayed with the photo (Google policy)
     department_info: Any = None  # hospitals: {has_derm_department, department_name, ...}
+    derm_status: str | None = None  # hospitals: has_derm_doctors|derm_dept_no_names|no_derm_found|unchecked (016)
+    concerns: list[str] = []  # patient-facing concerns (016)
+    pds_skin_cancer_center: bool | None = None  # (016)
     updated_at: dt.datetime
     deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 

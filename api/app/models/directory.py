@@ -53,6 +53,7 @@ class Doctor(Base):
     status: Mapped[str | None] = mapped_column(Text)  # soft exclusion, mirrors facilities (013)
     photo_url: Mapped[str | None] = mapped_column(Text)  # consent-only; stays null
     description: Mapped[str | None] = mapped_column(Text)  # short professional bio (011)
+    concerns: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)  # patient concerns (016)
     enriched_by: Mapped[str | None] = mapped_column(Text)  # enrichment provenance (006)
     enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     enrichment_meta: Mapped[dict | None] = mapped_column(JSONB)
@@ -106,6 +107,10 @@ class Facility(Base):
     photo_url: Mapped[str | None] = mapped_column(Text)  # Supabase Storage public URL
     photo_attribution: Mapped[str | None] = mapped_column(Text)  # Places author attribution — must be displayed with the photo
     department_info: Mapped[dict | None] = mapped_column(JSONB)  # hospitals: derm-department findings
+    # Patient-facing search (016)
+    derm_status: Mapped[str] = mapped_column(Text, nullable=False, default="unchecked")  # hospitals: has_derm_doctors|derm_dept_no_names|no_derm_found|unchecked
+    concerns: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    pds_skin_cancer_center: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Enrichment classification + provenance (006)
     is_aesthetic_only: Mapped[bool | None] = mapped_column(Boolean)
     classification_confidence: Mapped[Decimal | None] = mapped_column(Numeric)
@@ -129,6 +134,11 @@ class DoctorFacility(Base):
     )
     is_primary: Mapped[bool | None] = mapped_column(Boolean)
     schedule: Mapped[str | None] = mapped_column(Text)
+    schedule_days: Mapped[int | None] = mapped_column(SmallInteger)  # Mon=1..Sun=64 bitmask (016)
+    room: Mapped[str | None] = mapped_column(Text)  # (016)
+    phone: Mapped[str | None] = mapped_column(Text)  # clinic direct line (016)
+    source_url: Mapped[str | None] = mapped_column(Text)  # cited source of a researched link (016)
+    verified_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # (016)
     notes: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (013); /sync cursor
     deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
