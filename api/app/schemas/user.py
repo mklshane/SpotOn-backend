@@ -21,6 +21,7 @@ class UserOut(BaseModel):
     date_of_birth: dt.date | None = None
     sex: str | None = None
     fitzpatrick_skin_type: int | None = None
+    avatar_url: str | None = None
     is_active: bool
     is_verified: bool
     is_admin: bool = False

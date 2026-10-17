@@ -3,6 +3,7 @@
 These create + delete a throwaway user in the live DB. Requires migration 009
 applied and JWT_SECRET set.
 """
+import base64
 import uuid
 
 import pytest
@@ -32,6 +33,41 @@ async def creds():
 
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.asyncio
+async def test_profile_avatar_upload_and_remove(client: AsyncClient, creds: dict):
+    registered = await client.post("/auth/register", json=creds)
+    assert registered.status_code == 201, registered.text
+    headers = _auth(registered.json()["access_token"])
+    image = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/"
+        "lXcAAAAASUVORK5CYII="
+    )
+
+    uploaded = await client.post(
+        "/me/avatar", files={"file": ("avatar.png", image, "image/png")}, headers=headers
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    first_url = uploaded.json()["avatar_url"]
+    assert first_url.startswith(f'/me/avatar/{registered.json()["user"]["id"]}?v=')
+    assert (await client.get("/me", headers=headers)).json()["avatar_url"] == first_url
+    fetched = await client.get(first_url, headers=headers)
+    assert fetched.status_code == 200
+    assert fetched.content == image
+    assert fetched.headers["content-type"].startswith("image/png")
+
+    oversized = await client.post(
+        "/me/avatar", files={"file": ("large.png", image + b"x" * 1_000_000, "image/png")}, headers=headers
+    )
+    assert oversized.status_code == 413
+    assert (await client.get(first_url, headers=headers)).content == image
+
+    removed = await client.delete("/me/avatar", headers=headers)
+    assert removed.status_code == 200
+    assert removed.json()["avatar_url"] is None
+    assert (await client.get("/me", headers=headers)).json()["avatar_url"] is None
+    assert (await client.get(first_url, headers=headers)).status_code == 404
 
 
 @pytest.mark.asyncio

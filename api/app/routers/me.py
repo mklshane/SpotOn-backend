@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,11 @@ from app.models import RefreshToken, User
 from app.schemas.user import UserOut, UserUpdate
 
 router = APIRouter(prefix="/me", tags=["me"])
+MAX_AVATAR_BYTES = 1_000_000
+IMAGE_SIGNATURES = {
+    "image/jpeg": lambda data: data.startswith(b"\xff\xd8\xff"),
+    "image/png": lambda data: data.startswith(b"\x89PNG\r\n\x1a\n"),
+}
 
 
 async def _get_user(session: AsyncSession, current: CurrentUser) -> User:
@@ -64,6 +70,63 @@ async def update_me(
         setattr(user, field, value)
     user.updated_at = dt.datetime.now(dt.timezone.utc)
 
+    await session.commit()
+    await session.refresh(user)
+    return UserOut.model_validate(user)
+
+
+@router.post("/avatar", response_model=UserOut)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserOut:
+    """Store a small JPEG/PNG for the signed-in user; replacement is atomic."""
+    mime = file.content_type or ""
+    data = await file.read(MAX_AVATAR_BYTES + 1)
+    if mime not in IMAGE_SIGNATURES or not IMAGE_SIGNATURES[mime](data):
+        raise HTTPException(status_code=415, detail="Choose a JPEG or PNG photo.")
+    if len(data) > MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=413, detail="Profile photo is too large.")
+    user = await _get_user(session, current)
+    user.avatar_data = data
+    user.avatar_mime = mime
+    user.updated_at = dt.datetime.now(dt.timezone.utc)
+    await session.commit()
+    await session.refresh(user)
+    return UserOut.model_validate(user)
+
+
+@router.get("/avatar/{user_id}")
+async def get_avatar(
+    user_id: uuid.UUID,
+    current: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    if user_id != current.id:
+        raise HTTPException(status_code=404, detail="Profile photo not found.")
+    user = await _get_user(session, current)
+    if not user.avatar_data or not user.avatar_mime:
+        raise HTTPException(status_code=404, detail="Profile photo not found.")
+    return Response(
+        content=user.avatar_data,
+        media_type=user.avatar_mime,
+        headers={
+            "Cache-Control": "private, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.delete("/avatar", response_model=UserOut)
+async def remove_avatar(
+    current: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserOut:
+    user = await _get_user(session, current)
+    user.avatar_data = None
+    user.avatar_mime = None
+    user.updated_at = dt.datetime.now(dt.timezone.utc)
     await session.commit()
     await session.refresh(user)
     return UserOut.model_validate(user)

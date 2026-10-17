@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime as dt
 import uuid
 
-from sqlalchemy import Boolean, Date, DateTime, SmallInteger, Text, func
+from sqlalchemy import Boolean, Date, DateTime, LargeBinary, SmallInteger, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,8 @@ class User(Base):
     date_of_birth: Mapped[dt.date | None] = mapped_column(Date)
     sex: Mapped[str | None] = mapped_column(Text)
     fitzpatrick_skin_type: Mapped[int | None] = mapped_column(SmallInteger)
+    avatar_data: Mapped[bytes | None] = mapped_column(LargeBinary)
+    avatar_mime: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.true())
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.false())
     is_admin: Mapped[bool] = mapped_column(  # gates /admin/* (010)
@@ -41,3 +43,9 @@ class User(Base):
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+    @property
+    def avatar_url(self) -> str | None:
+        if not self.avatar_data:
+            return None
+        return f"/me/avatar/{self.id}?v={int(self.updated_at.timestamp() * 1000)}"
