@@ -37,8 +37,14 @@ Order = Literal["asc", "desc"]
 
 
 def _serialize_doctor(d: Doctor) -> DoctorOut:
-    """Build a DoctorOut, exposing only ACTIVE booking links (best first)."""
-    active = [bl for bl in d.booking_links if bl.is_active]
+    """Build a DoctorOut, exposing only live, ACTIVE booking links on a live, active platform (best first)."""
+    active = [
+        bl
+        for bl in d.booking_links
+        if bl.is_active
+        and bl.deleted_at is None
+        and (bl.platform is None or (bl.platform.is_active and bl.platform.deleted_at is None))
+    ]
     active.sort(key=lambda b: (b.rating is None, -(float(b.rating or 0))))
     out = DoctorOut.model_validate(d)
     out.booking_links = [BookingLinkOut.model_validate(bl) for bl in active]
@@ -111,15 +117,27 @@ async def list_doctors(
             .where(
                 BookingLink.doctor_id == Doctor.id,
                 BookingLink.is_active.is_(True),
+                BookingLink.deleted_at.is_(None),
                 TelemedicinePlatform.slug == platform,
+                TelemedicinePlatform.is_active.is_(True),
+                TelemedicinePlatform.deleted_at.is_(None),
             )
             .exists()
         )
         stmt = stmt.where(link_exists)
     if has_booking is not None:
+        # Same rule as _serialize_doctor: a tombstoned link, or one on a retired platform,
+        # is not a way to book.
         active_link = (
             select(BookingLink.id)
-            .where(BookingLink.doctor_id == Doctor.id, BookingLink.is_active.is_(True))
+            .join(TelemedicinePlatform, BookingLink.platform_id == TelemedicinePlatform.id)
+            .where(
+                BookingLink.doctor_id == Doctor.id,
+                BookingLink.is_active.is_(True),
+                BookingLink.deleted_at.is_(None),
+                TelemedicinePlatform.is_active.is_(True),
+                TelemedicinePlatform.deleted_at.is_(None),
+            )
             .exists()
         )
         stmt = stmt.where(active_link if has_booking else ~active_link)
@@ -133,7 +151,7 @@ async def list_doctors(
                 func.max(BookingLink.review_count).label("max_reviews"),
                 func.min(BookingLink.consultation_fee).label("min_fee"),
             )
-            .where(BookingLink.is_active.is_(True))
+            .where(BookingLink.is_active.is_(True), BookingLink.deleted_at.is_(None))
             .group_by(BookingLink.doctor_id)
             .subquery()
         )
@@ -211,7 +229,8 @@ async def list_facilities(
             Geography(geometry_type="POINT", srid=4326),
         )
         distance_expr = ST_Distance(Facility.location, point).label("distance_m")
-        stmt: Select = select(Facility, distance_expr)
+        # Tombstones are hidden on both branches; the radius branch used to return them.
+        stmt: Select = select(Facility, distance_expr).where(Facility.deleted_at.is_(None))
     else:
         stmt = select(Facility).where(Facility.deleted_at.is_(None))
 
