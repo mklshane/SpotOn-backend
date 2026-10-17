@@ -19,6 +19,8 @@ PROTECTED = [
     ("GET", "/admin/platforms"),
     ("POST", "/admin/facilities"),
     ("DELETE", f"/admin/doctors/{uuid.uuid4()}"),
+    ("GET", "/admin/reports"),
+    ("PATCH", f"/admin/reports/{uuid.uuid4()}"),
 ]
 
 

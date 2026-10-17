@@ -23,7 +23,7 @@ from app.schemas.admin import (
     AdminMetaOut,
 )
 
-from app.routers.admin import doctors, facilities, platforms  # noqa: E402
+from app.routers.admin import doctors, facilities, platforms, reports  # noqa: E402
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -43,3 +43,4 @@ async def admin_meta() -> AdminMetaOut:
 router.include_router(facilities.router)
 router.include_router(doctors.router)
 router.include_router(platforms.router)
+router.include_router(reports.router)

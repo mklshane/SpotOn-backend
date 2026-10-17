@@ -139,6 +139,7 @@ class DoctorFacility(Base):
     phone: Mapped[str | None] = mapped_column(Text)  # clinic direct line (016)
     source_url: Mapped[str | None] = mapped_column(Text)  # cited source of a researched link (016)
     verified_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # (016)
+    consultation_fee: Mapped[int | None] = mapped_column(Integer)  # PHP, this doctor at this clinic (018)
     notes: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (013); /sync cursor
     deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)
@@ -179,6 +180,7 @@ class BookingLink(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
     last_verified: Mapped[dt.date | None] = mapped_column(Date)
     next_available: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # first bookable slot (011)
+    offers_online: Mapped[bool | None] = mapped_column(Boolean)  # online/video consult; NULL = unknown (018)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # trigger-maintained (011); /sync cursor
     deleted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))  # tombstone (014)

@@ -89,6 +89,7 @@ login_ip = SlidingWindow(limit=30, window_s=60)            # any login request, 
 login_failures = SlidingWindow(limit=5, window_s=15 * 60)  # FAILED logins, per identifier
 register_ip = SlidingWindow(limit=30, window_s=10 * 60)    # new accounts, per IP
 refresh_ip = SlidingWindow(limit=120, window_s=60)         # token refreshes, per IP
+report_user = SlidingWindow(limit=10, window_s=60 * 60)    # directory reports, per account
 
 
 def limit_by_ip(window: SlidingWindow):
@@ -106,5 +107,5 @@ def limit_by_ip(window: SlidingWindow):
 
 def reset_all() -> None:
     """Test hook."""
-    for w in (login_ip, login_failures, register_ip, refresh_ip):
+    for w in (login_ip, login_failures, register_ip, refresh_ip, report_user):
         w.clear()

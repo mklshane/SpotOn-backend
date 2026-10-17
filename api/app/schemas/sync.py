@@ -59,6 +59,7 @@ class DoctorFacilitySync(ORMModel):
     phone: str | None = None
     source_url: str | None = None
     verified_at: dt.datetime | None = None
+    consultation_fee: int | None = None  # PHP, this doctor at this clinic (018)
     updated_at: dt.datetime  # trigger-maintained (013), the /sync cursor
     deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)
 
@@ -120,6 +121,7 @@ class BookingLinkSync(ORMModel):
     is_active: bool
     last_verified: dt.date | None = None
     next_available: dt.datetime | None = None  # first bookable slot from the platform
+    offers_online: bool | None = None  # online/video consult; None = unknown (018)
     created_at: dt.datetime
     updated_at: dt.datetime | None = None  # change timestamp (trigger-maintained, 011)
     deleted_at: dt.datetime | None = None  # tombstone: client purges the row (014)

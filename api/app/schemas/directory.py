@@ -46,6 +46,7 @@ class BookingLinkOut(ORMModel):
     is_active: bool
     last_verified: dt.date | None = None
     next_available: dt.datetime | None = None
+    offers_online: bool | None = None
     platform: PlatformOut | None = None
 
 

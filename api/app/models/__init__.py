@@ -7,6 +7,7 @@ from app.models.directory import (
     TelemedicinePlatform,
 )
 from app.models.refresh_token import RefreshToken
+from app.models.report import DirectoryReport
 from app.models.user import User
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "BookingLink",
     "User",
     "RefreshToken",
+    "DirectoryReport",
 ]
