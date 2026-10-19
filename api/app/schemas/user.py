@@ -27,6 +27,10 @@ class UserOut(BaseModel):
     is_admin: bool = False
     consent_data_privacy: bool
     consent_at: dt.datetime | None = None
+    research_consent: bool = False
+    research_consent_at: dt.datetime | None = None
+    research_consent_version: str | None = None
+    research_sharing_enabled: bool = False
     created_at: dt.datetime
     updated_at: dt.datetime
 

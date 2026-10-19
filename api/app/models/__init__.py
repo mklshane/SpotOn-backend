@@ -8,6 +8,7 @@ from app.models.directory import (
 )
 from app.models.refresh_token import RefreshToken
 from app.models.report import DirectoryReport
+from app.models.research import AdminAuditLog, ResearchConsent, ResearchContributor, ResearchSample
 from app.models.user import User
 
 __all__ = [
@@ -20,4 +21,8 @@ __all__ = [
     "User",
     "RefreshToken",
     "DirectoryReport",
+    "ResearchConsent",
+    "ResearchContributor",
+    "ResearchSample",
+    "AdminAuditLog",
 ]

@@ -1,4 +1,4 @@
-"""Admin directory-management endpoints. Every route requires users.is_admin
+"""Admin endpoints: directory management, plus review of opt-in research samples (research.py). Every route requires users.is_admin
 (see core.security.require_admin — checked per request against the DB).
 
 Write semantics the routers follow (documented once here):
@@ -23,7 +23,7 @@ from app.schemas.admin import (
     AdminMetaOut,
 )
 
-from app.routers.admin import doctors, facilities, platforms, reports  # noqa: E402
+from app.routers.admin import doctors, facilities, platforms, reports, research  # noqa: E402
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -44,3 +44,4 @@ router.include_router(facilities.router)
 router.include_router(doctors.router)
 router.include_router(platforms.router)
 router.include_router(reports.router)
+router.include_router(research.router)

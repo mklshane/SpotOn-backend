@@ -64,6 +64,25 @@ Tests run against the live database read-only. The `/me` happy path needs a real
 Supabase token, so the suite only asserts its auth gating (401); the full
 authenticated flow is verified manually.
 
+`tests/test_research.py` creates throwaway users (one temporarily promoted to admin) and
+cleans up after itself. Run it against a disposable local Postgres with migrations
+009/010/020/021 applied, not the live database.
+
+## Research sharing (021)
+
+Opt-in "Help improve SpotOn": users may share de-identified screenings (cropped lesion
+photo, age band, sex, Fitzpatrick, body region, answers, model output) for retraining.
+
+- `RESEARCH_SHARING_ENABLED` (default `false`) gates granting consent and uploading.
+  Keep it off until the study has ethics approval. Withdrawing and deleting always work.
+- `research_samples` has no `user_id`; it is keyed by a random `contributor_id`, and
+  `research_contributors` is read only to erase a user's samples (withdrawal,
+  `DELETE /research/samples/mine`, `DELETE /me`).
+- The API strips all JPEG metadata (`core/jpeg.py`) and rejects images over 1024 px.
+- `/admin/research/*` and `/admin/audit-log` sit behind `require_admin`; image views,
+  labels, deletes, list queries and CSV exports are written to `admin_audit_log`. The CSV
+  masks quasi-identifiers of groups smaller than k=5.
+
 ## /sync contract
 
 The client calls `GET /sync` (optionally `?since=<iso8601>`), stores the

@@ -25,7 +25,7 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.db import SessionLocal, engine
-from app.routers import admin, auth, directory, health, me, reports, sync
+from app.routers import admin, auth, directory, health, me, reports, research, sync
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("spoton")
@@ -88,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(reports.router)
     app.include_router(sync.router)
     app.include_router(me.router)
+    app.include_router(research.router)
     app.include_router(admin.router)
     return app
 

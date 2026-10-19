@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # App
     CORS_ORIGINS: str = "http://localhost:8081,http://localhost:19006,http://localhost:3000"
     ENV: str = "dev"
+    # Opt-in research sharing (021). Off until the study has ethics approval: while false the app
+    # hides the prompt/toggle and the upload endpoints refuse.
+    RESEARCH_SHARING_ENABLED: bool = False
 
     @property
     def cors_origins_list(self) -> list[str]:

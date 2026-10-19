@@ -12,6 +12,7 @@ from sqlalchemy import Boolean, Date, DateTime, LargeBinary, SmallInteger, Text,
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import get_settings
 from app.models.base import Base
 
 
@@ -37,12 +38,23 @@ class User(Base):
         Boolean, nullable=False, server_default=func.false()
     )
     consent_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    # Opt-in "Help improve SpotOn" (021). Separate from consent_data_privacy, off by default.
+    research_consent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=func.false()
+    )
+    research_consent_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    research_consent_version: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+    @property
+    def research_sharing_enabled(self) -> bool:
+        # Server-wide switch, surfaced on UserOut so the app can hide the feature entirely.
+        return get_settings().RESEARCH_SHARING_ENABLED
 
     @property
     def avatar_url(self) -> str | None:

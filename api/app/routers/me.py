@@ -12,6 +12,7 @@ from app.core.db import get_session
 from app.core.phone import normalize_ph_phone
 from app.core.security import CurrentUser, get_current_user
 from app.models import RefreshToken, User
+from app.routers.research import delete_user_samples
 from app.schemas.user import UserOut, UserUpdate
 
 router = APIRouter(prefix="/me", tags=["me"])
@@ -139,13 +140,14 @@ async def delete_me(
 ) -> Response:
     """Permanently delete the signed-in account. Irreversible.
 
-    `public.users` and `public.refresh_tokens` are the only user-scoped tables —
-    screenings live on the device, never on the server — so removing the row
-    removes the account outright. The FK cascades the refresh tokens with it, which
-    is what signs every other device out; we delete them explicitly first anyway so
-    the sessions die even if the cascade is ever dropped from the schema.
+    Screenings live on the device. The only screening data on the server is what the user
+    opted to share for research (021), and research_samples deliberately has no FK to users, so
+    it is erased explicitly here. Everything else user-scoped (refresh tokens, consent history,
+    the contributor link) goes with the users row via FK cascade; refresh tokens are still
+    deleted explicitly first so the sessions die even if that cascade is ever dropped.
     """
     user = await _get_user(session, current)
+    await delete_user_samples(session, user.id)
     await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
     await session.delete(user)
     await session.commit()
