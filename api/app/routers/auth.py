@@ -14,7 +14,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
-from app.core.passwords import hash_password, verify_password
+from app.core.passwords import hash_password, needs_rehash, verify_password
 from app.core.phone import normalize_ph_phone
 from app.core.ratelimit import (
     limit_by_ip,
@@ -38,10 +38,10 @@ from app.schemas.user import UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# A real bcrypt hash (cost 12) of a throwaway string. Login verifies against it when the account
-# doesn't exist, so "no such user" costs the same bcrypt time as "wrong password" and response
-# timing can't be used to test which emails/phones are registered.
-_DUMMY_HASH = "$2b$12$gAMAus.3p0C/zkVQYHmW3uvDawhsvwEDDNuWD3Mw90E.dXZDuIg2K"
+# A real bcrypt hash of a throwaway string, at the same cost as BCRYPT_ROUNDS. Login verifies
+# against it when the account doesn't exist, so "no such user" costs the same bcrypt time as
+# "wrong password" and response timing can't be used to test which emails/phones are registered.
+_DUMMY_HASH = "$2b$10$QJZ3kZXbV0C8HVaoP3Qct.Tftxsu1f19irCVXWwYOgvk4pgmmevwi"
 
 
 def _now() -> dt.datetime:
@@ -140,6 +140,9 @@ async def login(payload: LoginIn, session: AsyncSession = Depends(get_session)) 
             detail="Incorrect email/phone or password.",
         )
     login_failures.reset(attempt_key)
+    if needs_rehash(user.hashed_password):
+        # Moves pre-cost-10 accounts onto the cheaper hash; committed with the refresh token.
+        user.hashed_password = await run_in_threadpool(hash_password, payload.password)
     return await _issue_tokens(session, user)
 
 
