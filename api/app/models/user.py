@@ -27,6 +27,10 @@ class User(Base):
     date_of_birth: Mapped[dt.date | None] = mapped_column(Date)
     sex: Mapped[str | None] = mapped_column(Text)
     fitzpatrick_skin_type: Mapped[int | None] = mapped_column(SmallInteger)
+    # Optional risk factors (022): personalise result advice only, never the triage tier.
+    personal_skin_cancer_history: Mapped[str | None] = mapped_column(Text)
+    family_skin_cancer_history: Mapped[str | None] = mapped_column(Text)
+    high_sun_exposure: Mapped[bool | None] = mapped_column(Boolean)
     avatar_data: Mapped[bytes | None] = mapped_column(LargeBinary)
     avatar_mime: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=func.true())

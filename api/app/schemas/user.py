@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # Sex is free-text in the DB; constrain to a sensible inclusive set at the API.
 Sex = Literal["male", "female", "intersex", "other", "prefer_not_to_say"]
+YesNoUnsure = Literal["yes", "no", "unsure"]
 
 
 class UserOut(BaseModel):
@@ -21,6 +22,9 @@ class UserOut(BaseModel):
     date_of_birth: dt.date | None = None
     sex: str | None = None
     fitzpatrick_skin_type: int | None = None
+    personal_skin_cancer_history: str | None = None
+    family_skin_cancer_history: str | None = None
+    high_sun_exposure: bool | None = None
     avatar_url: str | None = None
     is_active: bool
     is_verified: bool
@@ -45,3 +49,7 @@ class UserUpdate(BaseModel):
     phone: str | None = None
     # Sensitive — only stored when consent_data_privacy is true (gated in router).
     fitzpatrick_skin_type: int | None = Field(default=None, ge=1, le=6)
+    # Optional risk factors (022). Sensitive - consent-gated in the router like Fitzpatrick.
+    personal_skin_cancer_history: YesNoUnsure | None = None
+    family_skin_cancer_history: YesNoUnsure | None = None
+    high_sun_exposure: bool | None = None

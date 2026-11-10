@@ -45,6 +45,14 @@ async def get_me(
     return UserOut.model_validate(user)
 
 
+SENSITIVE_FIELDS = (
+    "fitzpatrick_skin_type",
+    "personal_skin_cancer_history",
+    "family_skin_cancer_history",
+    "high_sun_exposure",
+)
+
+
 @router.patch("", response_model=UserOut)
 async def update_me(
     payload: UserUpdate,
@@ -59,12 +67,12 @@ async def update_me(
     if "phone" in data and data["phone"]:
         data["phone"] = normalize_ph_phone(data["phone"])
 
-    # Gate the sensitive Fitzpatrick attribute behind data-privacy consent.
-    if "fitzpatrick_skin_type" in data and data["fitzpatrick_skin_type"] is not None:
-        if not user.consent_data_privacy:
+    # Gate sensitive health attributes behind data-privacy consent. Clearing (null) is always allowed.
+    for field in SENSITIVE_FIELDS:
+        if data.get(field) is not None and not user.consent_data_privacy:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Data-privacy consent is required to store fitzpatrick_skin_type.",
+                detail=f"Data-privacy consent is required to store {field}.",
             )
 
     for field, value in data.items():
